@@ -1,0 +1,44 @@
+[Unit]
+Description=weappctl read-only MCP service (WeChat miniprogram drama data)
+Documentation=file:/usr/local/share/doc/weappctl/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=weappctl
+Group=weappctl
+
+# appid/secret 放 /etc/weappctl/config.yaml（0600）；代理等环境变量放这个文件。
+# 不要把密钥直接写进 unit 文件。
+EnvironmentFile=-/etc/weappctl/env
+Environment=HOME=/var/lib/weappctl
+StateDirectory=weappctl
+StateDirectoryMode=0700
+
+# 只监听内网 IP：默认的 127.0.0.1 只有本机能访问。
+ExecStart=/usr/local/bin/weappctl serve \
+    --listen 10.0.0.23:8787 \
+    --config /etc/weappctl/config.yaml \
+    --profile default \
+    --tokens /etc/weappctl/tokens.yaml \
+    --daily-call-limit 2000
+
+Restart=on-failure
+RestartSec=3
+
+# 加固：服务只需要读自己的配置、写自己的状态目录、出网访问微信 API。
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target

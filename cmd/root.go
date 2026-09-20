@@ -19,9 +19,14 @@ var (
 	secretOverride string
 )
 
+// version is the build version reported by --version and in the MCP
+// handshake; release builds inject it via -ldflags (see justfile).
+var version = "dev"
+
 var rootCmd = &cobra.Command{
 	Use:           "weappctl",
 	Short:         "微信小程序服务端 API 命令行工具",
+	Version:       version,
 	SilenceUsage:  true,
 	SilenceErrors: false,
 }
@@ -47,6 +52,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&secretOverride, "secret", "", "覆盖 profile 中的 secret")
 
 	rootCmd.AddCommand(dramaCmd)
+	rootCmd.AddCommand(serveCmd)
 }
 
 // resolveCredentials layers config file < WEAPP_APPID/WEAPP_SECRET env vars
@@ -83,31 +89,40 @@ func resolveCredentials() (appid, secret string, err error) {
 	return appid, secret, nil
 }
 
-// authedClient builds a weixin.Client plus a valid access_token for the
-// active profile, sharing the credential-resolution/token-cache setup
-// across every drama subcommand.
-func authedClient(ctx context.Context) (*weixin.Client, string, error) {
+// tokenManager builds the access-token manager for the active profile. Both
+// the CLI commands and `weappctl serve` go through here, so the credential
+// resolution and token cache wiring exist in exactly one place.
+func tokenManager() (*weixin.TokenManager, error) {
 	appid, secret, err := resolveCredentials()
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	cacheDir, err := config.DefaultCacheDir()
 	if err != nil {
-		return nil, "", fmt.Errorf("resolve token cache dir: %w", err)
+		return nil, fmt.Errorf("resolve token cache dir: %w", err)
 	}
 
-	client := weixin.NewClient()
-	tm := &weixin.TokenManager{
-		Client: client,
+	return &weixin.TokenManager{
+		Client: weixin.NewClient(),
 		Cache:  weixin.NewTokenCache(cacheDir),
 		AppID:  appid,
 		Secret: secret,
+	}, nil
+}
+
+// authedClient builds a weixin.Client plus a valid access_token for the
+// active profile, sharing the credential-resolution/token-cache setup
+// across every drama subcommand.
+func authedClient(ctx context.Context) (*weixin.Client, string, error) {
+	tm, err := tokenManager()
+	if err != nil {
+		return nil, "", err
 	}
 
 	token, err := tm.AccessToken(ctx, profileName)
 	if err != nil {
 		return nil, "", fmt.Errorf("get access_token: %w", err)
 	}
-	return client, token, nil
+	return tm.Client, token, nil
 }

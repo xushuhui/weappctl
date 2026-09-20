@@ -1,3 +1,7 @@
 /weappctl
+/bin/
 *.test
 *.out
+/dramas.json
+/approved_dramas.csv
+/takendown_dramas.csv

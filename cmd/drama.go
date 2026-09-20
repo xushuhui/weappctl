@@ -11,4 +11,5 @@ func init() {
 	dramaCmd.AddCommand(dramaListCmd)
 	dramaCmd.AddCommand(dramaPublishedCmd)
 	dramaCmd.AddCommand(dramaGetCmd)
+	dramaCmd.AddCommand(dramaDeleteMediaCmd)
 }

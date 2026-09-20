@@ -33,7 +33,16 @@ type DramaInfo struct {
 	Recommendations string    `json:"recommendations"`
 	PromotionPoster string    `json:"promotion_poster"`
 	ActorList       ActorList `json:"actor_list"`
-	// Status: 0 live, 1 in review, 2 review failed, 3 taken down by platform.
+	// Status: 0 live, 1 in review, 2 review failed, 3 taken down by platform,
+	// per WeChat's own docs. VERIFIED DISCREPANCY (against a real account's
+	// 1150-drama listDramas dump): Status==1 here does NOT reliably mean
+	// "actually in review" — of 167 records with Status==1, only 2 had
+	// AuditDetail.Status==1 (in review); the other 165 had
+	// AuditDetail.Status==4 (returned for revision, i.e. rejected pending
+	// resubmission). The WeChat console's own "审核中" count matches
+	// AuditDetail.Status==1, not this field. Treat AuditDetail.Status as
+	// the authoritative review-state signal; this Status is closer to a
+	// coarse playability flag.
 	Status int `json:"status"`
 }
 
